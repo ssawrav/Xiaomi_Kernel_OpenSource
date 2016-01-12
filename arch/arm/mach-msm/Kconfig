@@ -1057,4 +1057,9 @@ config FORCE_FAST_CHARGE
 	  A simple sysfs interface to increase input current limit to
 	  900mA when charging via USB.
 
+config THUNDERPLUG_CONTROL
+ 	bool "Enable plugging down/up of cores using powersuspend"
+ 	help
+ 	  This driver uses powersuspend to take down the cpu cores on a octa core device.
+
 endif
