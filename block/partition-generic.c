@@ -17,6 +17,7 @@
 #include <linux/ctype.h>
 #include <linux/genhd.h>
 #include <linux/blktrace_api.h>
+#include <linux/apanic_mmc.h>
 
 #include "partitions/check.h"
 
@@ -120,7 +121,7 @@ ssize_t part_stat_show(struct device *dev,
 	return sprintf(buf,
 		"%8lu %8lu %8llu %8u "
 		"%8lu %8lu %8llu %8u "
-		"%8u %8u %8u"
+		"%8u %8u %8u %8llu"
 		"\n",
 		part_stat_read(p, ios[READ]),
 		part_stat_read(p, merges[READ]),
@@ -132,7 +133,8 @@ ssize_t part_stat_show(struct device *dev,
 		jiffies_to_msecs(part_stat_read(p, ticks[WRITE])),
 		part_in_flight(p),
 		jiffies_to_msecs(part_stat_read(p, io_ticks)),
-		jiffies_to_msecs(part_stat_read(p, time_in_queue)));
+		jiffies_to_msecs(part_stat_read(p, time_in_queue)),
+		(unsigned long long)part_stat_read(p, data_sectors));
 }
 
 ssize_t part_inflight_show(struct device *dev,
@@ -219,6 +221,7 @@ static void part_release(struct device *dev)
 static int part_uevent(struct device *dev, struct kobj_uevent_env *env)
 {
 	struct hd_struct *part = dev_to_part(dev);
+	apanic_mmc_partition_add(part);
 
 	add_uevent_var(env, "PARTN=%u", part->partno);
 	if (part->info && part->info->volname[0])
@@ -259,6 +262,8 @@ void delete_partition(struct gendisk *disk, int partno)
 	part = ptbl->part[partno];
 	if (!part)
 		return;
+
+	apanic_mmc_partition_remove(part);
 
 	rcu_assign_pointer(ptbl->part[partno], NULL);
 	rcu_assign_pointer(ptbl->last_lookup, NULL);

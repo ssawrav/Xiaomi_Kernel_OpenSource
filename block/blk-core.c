@@ -1344,8 +1344,10 @@ EXPORT_SYMBOL_GPL(part_round_stats);
 #ifdef CONFIG_PM_RUNTIME
 static void blk_pm_put_request(struct request *rq)
 {
-	if (rq->q->dev && !(rq->cmd_flags & REQ_PM) && !--rq->q->nr_pending)
-		pm_runtime_mark_last_busy(rq->q->dev);
+	if (rq->q->dev && !(rq->cmd_flags & REQ_PM) && rq->q->nr_pending) {
+		if (!--rq->q->nr_pending)
+			pm_runtime_mark_last_busy(rq->q->dev);
+	}
 }
 #else
 static inline void blk_pm_put_request(struct request *rq) {}
@@ -1923,6 +1925,88 @@ void generic_make_request(struct bio *bio)
 }
 EXPORT_SYMBOL(generic_make_request);
 
+#ifdef CONFIG_MOST
+
+struct blk_req_table gblk_req_table[MOST_TABLE_SIZE];
+int gblk_current;
+
+void update_most_table(int rw, struct bio *bio, int count)
+{
+	int tfile = 0;
+	struct inode *inode = NULL;
+	struct hlist_node *next;
+	struct dentry *dentry;
+	int len;
+	struct page *bpage;
+
+	if (bio->bi_io_vec)
+		bpage = bio->bi_io_vec->bv_page;
+	else
+		goto final;
+
+	if (!(bpage && bpage->mapping))
+		goto final;
+
+	if (bpage->mapping->host)
+		inode = bpage->mapping->host;
+
+	if (PageAnon(bpage))
+		goto final;
+	if (inode && inode->i_ino != 0
+		&& !hlist_empty(&inode->i_dentry)) {
+		next = inode->i_dentry.first;
+
+		dentry = hlist_entry(next,
+			struct dentry, d_alias);
+
+		if (dentry) {
+			len = strlen(dentry->d_iname);
+			strlcpy(gblk_req_table[gblk_current].d_iname,
+				dentry->d_iname,
+				sizeof(gblk_req_table[gblk_current].d_iname));
+			if (rw & WRITE) {
+				if (dentry->d_iname[len-8] == '-'
+					&& dentry->d_iname[len-7] == 'j') {
+					tfile = 100000;
+				} else if (dentry->d_iname[len-12] == 'b'
+					&& dentry->d_iname[len-11] == '-'
+					&& dentry->d_iname[len-10] == 'm'
+					&& dentry->d_iname[len-9] == 'j') {
+					tfile = 200000;
+				} else if (dentry->d_iname[len-4] == '.'
+					&& dentry->d_iname[len-3] == 'b'
+					&& dentry->d_iname[len-2] == 'a'
+					&& dentry->d_iname[len-1] == 'k') {
+					tfile = 300000;
+				} else if (dentry->d_iname[len-3] == 't'
+					&& dentry->d_iname[len-2] == 'm'
+					&& dentry->d_iname[len-1] == 'p') {
+					tfile = 400000;
+				} else if (dentry->d_iname[len-3] == '.'
+					&& dentry->d_iname[len-2] == 'd'
+					&& dentry->d_iname[len-1] == 'b') {
+					tfile = 500000;
+				}
+			}
+		}
+	}
+
+final:
+	gblk_req_table[gblk_current].pid = task_pid_nr(current);
+	gblk_req_table[gblk_current].temp_file = tfile;
+	gblk_req_table[gblk_current].sector = bio->bi_sector;
+	gblk_req_table[gblk_current].count = count;
+
+	gblk_current++;
+	if (gblk_current == MOST_TABLE_SIZE)
+		gblk_current = 0;
+}
+#else /* !CONFIG_MOST */
+
+#define update_most_table(rw, bio, count) do {} while (0)
+
+#endif /* CONFIG_MOST */
+
 /**
  * submit_bio - submit a bio to the block device layer for I/O
  * @rw: whether to %READ or %WRITE, or maybe to %READA (read ahead)
@@ -1935,7 +2019,6 @@ EXPORT_SYMBOL(generic_make_request);
  */
 void submit_bio(int rw, struct bio *bio)
 {
-	struct task_struct *tsk = current;
 	bio->bi_rw |= rw;
 
 	/*
@@ -1959,23 +2042,14 @@ void submit_bio(int rw, struct bio *bio)
 
 		if (unlikely(block_dump)) {
 			char b[BDEVNAME_SIZE];
-
-			/*
-			 * Not all the pages in the bio are dirtied by the
-			 * same task but most likely it will be, since the
-			 * sectors accessed on the device must be adjacent.
-			 */
-			if (bio->bi_io_vec && bio->bi_io_vec->bv_page &&
-			    bio->bi_io_vec->bv_page->tsk_dirty)
-				tsk = bio->bi_io_vec->bv_page->tsk_dirty;
-
 			printk(KERN_DEBUG "%s(%d): %s block %Lu on %s (%u sectors)\n",
-				tsk->comm, task_pid_nr(tsk),
+			current->comm, task_pid_nr(current),
 				(rw & WRITE) ? "WRITE" : "READ",
 				(unsigned long long)bio->bi_sector,
 				bdevname(bio->bi_bdev, b),
 				count);
 		}
+		update_most_table(rw, bio, count);
 	}
 
 	generic_make_request(bio);
@@ -2124,6 +2198,8 @@ static void blk_account_io_completion(struct request *req, unsigned int bytes)
 		cpu = part_stat_lock();
 		part = req->part;
 		part_stat_add(cpu, part, sectors[rw], bytes >> 9);
+		if (rw == WRITE && !(req->cmd_flags & REQ_DISCARD))
+			part_stat_add(cpu, part, data_sectors, bytes >> 9);
 		part_stat_unlock();
 	}
 }
