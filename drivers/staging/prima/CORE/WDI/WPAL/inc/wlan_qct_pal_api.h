@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -36,6 +36,9 @@
                
    Definitions for platform independent
   
+   Copyright 2010 (c) Qualcomm, Incorporated.  All Rights Reserved.
+   
+   Qualcomm Confidential and Proprietary.
   
   ========================================================================*/
 
@@ -339,17 +342,16 @@ int wpalWcnssIsProntoHwVer3(void);
     wpalFwDumpReq -  Trigger the dump commands to Firmware
 
     Param:
-       cmd -   Command No. to execute
-       arg1 -  argument 1 to cmd
-       arg2 -  argument 2 to cmd
-       arg3 -  argument 3 to cmd
-       arg4 -  argument 4 to cmd
-       async -asynchronous event. Don't wait for completion.
+       cmd - Command No. to execute
+       arg1 - argument 1 to cmd
+       arg2 - argument 2 to cmd
+       arg3 - argument 3 to cmd
+       arg4 - argument 4 to cmd
     Return:
        NONE
 ---------------------------------------------------------------------------*/
 void wpalFwDumpReq(wpt_uint32 cmd, wpt_uint32 arg1, wpt_uint32 arg2,
-                    wpt_uint32 arg3, wpt_uint32 arg4, wpt_boolean async);
+                    wpt_uint32 arg3, wpt_uint32 arg4);
 
 /*---------------------------------------------------------------------------
     wpalDevicePanic -  Trigger Device Panic
@@ -364,14 +366,14 @@ void wpalFwDumpReq(wpt_uint32 cmd, wpt_uint32 arg1, wpt_uint32 arg2,
 void wpalDevicePanic(void);
 
 /*---------------------------------------------------------------------------
-    wpalIslogPInProgress -  calls vos API vos_is_logp_in_progress()
+    wpalIsWDresetInProgress -  calls vos API isWDresetInProgress()
 
     Param:
        NONE
     Return:
        STATUS
 --------------------------------------------------------------------------*/
-int  wpalIslogPInProgress(void);
+int  wpalIsWDresetInProgress(void);
 
 /*---------------------------------------------------------------------------
     wpalIsSsrPanicOnFailure -  calls vos API isSsrPanicOnFailure()
@@ -382,11 +384,4 @@ int  wpalIslogPInProgress(void);
        STATUS
 --------------------------------------------------------------------------*/
 int  wpalIsSsrPanicOnFailure(void);
-
-int  wpalGetDxeReplenishRXTimerVal(void);
-int  wpalIsDxeSSREnable(void);
-
-wpt_uint8 wpalIsFwLoggingEnabled(void);
-wpt_uint8 wpalIsFwLoggingSupported(void);
-wpt_uint8 wpalIsFwEvLoggingEnabled(void);
 #endif // __WLAN_QCT_PAL_API_H
