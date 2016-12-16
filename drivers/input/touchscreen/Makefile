@@ -113,3 +113,4 @@ obj-$(CONFIG_TOUCHSCREEN_GSL1688E) += gsl_ts_driver.o gsl_ReadArrayData.o gsl_po
 #	cp $(srctree)/$(obj)/gsl_point_id $(obj)/gsl_point_id.o
 
 obj-$(CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE)        += doubletap2wake.o
+obj-$(CONFIG_STATE_NOTIFIER)            += state_notifier.o

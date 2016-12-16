@@ -1108,4 +1108,14 @@ config TOUCHSCREEN_PREVENT_SLEEP
 	help
 	  This disables the sleep function of modified touchscreen drivers.
 
+config STATE_NOTIFIER
+        bool "Notify screen status to touch driver"
+        depends on FB_MSM_MDSS
+        help
+          This driver uses MDSS notifier to export screen status to the
+          touch driver. This could be useful for suspended processes
+          in other drivers.
+
+          If unsure, say N.
+
 endif
