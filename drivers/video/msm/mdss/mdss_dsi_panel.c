@@ -630,11 +630,6 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		return -EINVAL;
 	}
 
-#ifdef CONFIG_MACH_T86519A1
-	gpio_set_value(TPS65132_GPIO_POS_EN, 1);
-	gpio_set_value(TPS65132_GPIO_NEG_EN, 1);
-#endif
-
 	display_on = true;
 
 	pinfo = &pdata->panel_info;
@@ -704,6 +699,8 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	if (ctrl->off_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds);
 
+display_on = false;
+
 #ifdef CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE
        ts_get_prevent_sleep(prevent_sleep);
        if (prevent_sleep)
@@ -740,13 +737,6 @@ static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 	else
 		pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
 
-<<<<<<< HEAD
-=======
-	display_on = false;
-
-end:
-	pinfo->blank_state = MDSS_PANEL_BLANK_BLANK;
->>>>>>> 7ce80ea... display: add a simple api to query the display state (on/off) at any point in time
 	pr_debug("%s:-\n", __func__);
 	return 0;
 }
